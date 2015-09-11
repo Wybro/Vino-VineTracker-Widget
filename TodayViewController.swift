@@ -15,10 +15,12 @@ class TodayViewController: UIViewController, NCWidgetProviding, JBLineChartViewD
     let customGreen = UIColor(red: 19/255, green: 183/255, blue: 121/255, alpha: 1)
     let customHighlightGreen = UIColor(red: 19/255, green: 238/255, blue: 121/255, alpha: 1)
     let customRed = UIColor(red: 254/255, green: 20/255, blue: 37/255, alpha: 1)
-//    let data = [1000, 1250, 1850, 1430, 2000, 7000, 4500, 4700, 5200, 6300]
+    let customPurple = UIColor(red: 167/255, green: 99/255, blue: 208/255, alpha: 1)
+    
+    let customGreenBackground = UIColor(red: 19/255, green: 183/255, blue: 121/255, alpha: 1)
+    let customPurpleBackground = UIColor(red: 167/255, green: 99/255, blue: 208/255, alpha: 1)
     
     var dataPoints: [Int] = [Int]()
-    var cachedUser: [String:AnyObject] = [String:AnyObject]()
     
     @IBOutlet var lineChartView: JBLineChartView!
     @IBOutlet var followerLabel: UILabel!
@@ -31,33 +33,29 @@ class TodayViewController: UIViewController, NCWidgetProviding, JBLineChartViewD
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view from its nib.
-        
-//        let lineChartView = JBLineChartView()
+
         lineChartView.dataSource = self
         lineChartView.delegate = self
         lineChartView.backgroundColor = UIColor.clearColor()
-//        lineChartView.frame = CGRectMake(0, self.lineChartView.bounds.height - self.lineChartView.bounds.height * 0.25, self.view.bounds.width, self.lineChartView.bounds.height)
         lineChartView.showsLineSelection = false
         lineChartView.showsVerticalSelection = false
         lineChartView.reloadData()
-//        self.view.addSubview(lineChartView)
+
         println("Launched")
         
         self.avatarPicImageView.layer.cornerRadius = self.avatarPicImageView.frame.size.width / 2
         self.avatarPicImageView.clipsToBounds = true
         
-//        fetchNewData()
-        
-//        println("viewdidload")
+        checkUserSearchSettings()
     }
     
     override func viewDidAppear(animated: Bool) {
-//        fetchNewData(self.getUserSearchSettings())
+
     }
     
     override func viewWillAppear(animated: Bool) {
         // reload data (if any) from cached state
-        loadUserFromCache()
+        checkUserDisplaySetting()
     }
     
     override func viewWillDisappear(animated: Bool) {
@@ -76,7 +74,7 @@ class TodayViewController: UIViewController, NCWidgetProviding, JBLineChartViewD
         // If there's no update required, use NCUpdateResult.NoData
         // If there's an update, use NCUpdateResult.NewData
 
-        fetchNewData(self.getUserSearchSettings())
+        fetchNewData(UserDefaultsManager.getUserSearchSettings())
         completionHandler(NCUpdateResult.NewData)
     }
     
@@ -97,7 +95,12 @@ class TodayViewController: UIViewController, NCWidgetProviding, JBLineChartViewD
     }
     
     func lineChartView(lineChartView: JBLineChartView!, colorForLineAtLineIndex lineIndex: UInt) -> UIColor! {
-        return customGreen
+        if let displaySetting = UserDefaultsManager.getUserDisplaySetting() as String!{
+            if displaySetting == "loopView" {
+                return customPurpleBackground
+            }
+        }
+        return customGreenBackground
     }
     
     func lineChartView(lineChartView: JBLineChartView!, widthForLineAtLineIndex lineIndex: UInt) -> CGFloat {
@@ -108,134 +111,264 @@ class TodayViewController: UIViewController, NCWidgetProviding, JBLineChartViewD
         return UIEdgeInsetsZero
     }
     
-    func loadUserFromCache() {
-        let sharedDefaults = NSUserDefaults(suiteName: "group.com.Wybro.Vino-VineTracker")
-        if let loadedUser = sharedDefaults?.objectForKey("cachedUser") as? [String: AnyObject] {
-            println("Cached user found - loading from cached data")
-            var cachedFollowers = loadedUser["currentFollowers"] as! Int
-            var cachedNewFollowers = loadedUser["newFollowers"] as! Int
-            var cachedAvatarPicData = loadedUser["avatarPic"] as! NSData
-            var cachedAvatarImage = UIImage(data: cachedAvatarPicData)! as UIImage
-            var cachedDataPoints = loadedUser["dataPoints"] as! [Int]
-            updateLabels(cachedFollowers, newFollowers: cachedNewFollowers)
-            updateAvatarPic(cachedAvatarImage)
-            updateGraph(cachedDataPoints)
+    func checkUserSearchSettings() {
+        if let searchSetting = UserDefaultsManager.getUserSearchSettings() as String! {
+            warningLabel.hidden = true
+            followerLabel.hidden = false
+            followersStaticLabel.hidden = false
+            newFollowersLabel.hidden = false
+            todayStaticLabel.hidden = false
+            
         }
         else {
-            println("No cached user found")
-        }
-    }
-    
-    func getUserSearchSettings() -> String? {
-        let sharedDefaults = NSUserDefaults(suiteName: "group.com.Wybro.Vino-VineTracker")
-        var returnString = sharedDefaults?.objectForKey("userSearchString") as? String
-        if returnString == nil {
             warningLabel.hidden = false
             followerLabel.hidden = true
             followersStaticLabel.hidden = true
             newFollowersLabel.hidden = true
             todayStaticLabel.hidden = true
         }
-        else {
-           warningLabel.hidden = true
-            followerLabel.hidden = false
-            followersStaticLabel.hidden = false
-            newFollowersLabel.hidden = false
-            todayStaticLabel.hidden = false
+    }
+    
+    func checkUserDisplaySetting() {
+        if let displaySetting = UserDefaultsManager.getUserDisplaySetting() as String! {
+            if displaySetting == "followerView" {
+                followerViewMode()
+            }
+            else if displaySetting == "loopView" {
+                loopViewMode()
+            }
         }
-//        println(returnString)
-        return returnString
+    }
+    
+    func followerViewMode() {
+        println("followerViewMode")
+        UserDefaultsManager.updateUserDisplaySetting("followerView")
+        dispatch_async(dispatch_get_main_queue(), { () -> Void in
+            self.followersStaticLabel.text = "followers"
+            self.followersStaticLabel.textColor = self.customGreenBackground
+            self.followerLabel.textColor = self.customGreenBackground
+            UserDefaultsManager.loadUserFromCache({ (savedUser) -> () in
+                self.updateLabels(savedUser.followerCount, newFollowers: savedUser.newFollowers)
+                self.updateGraph(savedUser.followerDataPoints)
+                self.updateAvatarPic(savedUser.avatarPic)
+            })
+        })
+    }
+    
+    func loopViewMode() {
+        println("loopViewMode")
+        UserDefaultsManager.updateUserDisplaySetting("loopView")
+        dispatch_async(dispatch_get_main_queue(), { () -> Void in
+            self.followersStaticLabel.text = "loops"
+            self.followersStaticLabel.textColor = self.customPurpleBackground
+            self.followerLabel.textColor = self.customPurpleBackground
+            UserDefaultsManager.loadUserFromCache({ (savedUser) -> () in
+                self.updateLabels(savedUser.loopCount, newFollowers: savedUser.newLoops)
+                self.updateGraph(savedUser.loopDataPoints)
+                self.updateAvatarPic(savedUser.avatarPic)
+            })
+        })
     }
     
     func fetchNewData(searchString: String?) {
         println("Fetching data")
-        //        VineConnection.getUserDataForID(bcUserId, completionHandler: { (vineUser:VineUser) -> () in
         if (searchString != nil) {
             if !searchString!.isEmpty {
-//                self.updateUserSearchSettings(searchString!)
-                VineConnection.getUserDataForName(searchString!, completionHandler: { (vineUser:VineUser) -> () in
+                
+//                showActionPopoverView("loading")
+                
+                VineConnection.getUserDataForName(searchString!, completionHandler: { (vineUser:VineUser, error:String) -> () in
+                    
+                    if !error.isEmpty {
+                        println("error: \(error)")
+//                        self.stopSpinningAction()
+//                        self.showActionPopoverView("noUser")
+                        return
+                    }
+                    else {
+//                        self.hideActionPopoverView()
+                        println("search successful - saving search")
+                        UserDefaultsManager.updateUserSearchSettings(searchString!)
+                    }
+                    
+//                    self.hideUserSearch()
+                    
                     // Update settings
-                    //                self.updateUserSearchSettings(searchString!)
-                    
-                    //            println(vineUser.username)
-                    //            println(vineUser.followerCount)
-                    //            println(vineUser.loopCount)
-                    
-                    let sharedDefaults = NSUserDefaults(suiteName: "group.com.Wybro.Vino-VineTracker")
-                    
+                    var foundUser: SavedUser? = nil
                     var newFollowers = 0
+                    var newFollowersFromPreviousDate = 0
+                    var newLoops = 0
+                    var newLoopsFromPreviousDate = 0
                     
-                    if let foundUser = sharedDefaults?.objectForKey("\(vineUser.userId)") as? [String:AnyObject] {
-                        //                println("User found!")
-                        //                println(foundUser)
-                        
-                        var newDataPoints = foundUser["dataPoints"] as! [Int]
-                        newDataPoints.append(vineUser.followerCount)
-                        if newDataPoints.endIndex >= 20 {
-                            newDataPoints.removeAtIndex(0)
+                    UserDefaultsManager.getSavedUser("\(vineUser.userId)", completionHandler: { (savedUser) -> () in
+                        println("saved user: \(savedUser)")
+                        foundUser = savedUser
+                    })
+                    
+                    if foundUser != nil {
+                        var followerDataPoints = foundUser!.followerDataPoints
+                        followerDataPoints?.append(vineUser.followerCount)
+                        if followerDataPoints?.endIndex > 20 {
+                            followerDataPoints?.removeAtIndex(0)
                         }
-                        self.updateGraph(newDataPoints)
-
+                        
+                        var loopDataPoints = foundUser!.loopDataPoints
+                        loopDataPoints?.append(vineUser.loopCount)
+                        if loopDataPoints?.endIndex > 20 {
+                            loopDataPoints?.removeAtIndex(0)
+                        }
+                        
+                        if let displaySetting = UserDefaultsManager.getUserDisplaySetting() as String!{
+                            if displaySetting == "followerView" {
+                                self.updateGraph(followerDataPoints)
+                            }
+                            else if displaySetting == "loopView" {
+                                self.updateGraph(loopDataPoints)
+                            }
+                        }
+                        //                        self.updateGraph(followerDataPoints)
+                        // Update graphs here
+                        
                         let calendar = NSCalendar.currentCalendar()
-                        var startingFollowers = foundUser["newFollowersData"]!["startingFollowers"] as! Int
-                        var newFollowersFromPreviousDate = foundUser["newFollowersData"]!["newFollowersFromPreviousDate"] as! Int
+                        
+                        var startingFollowers = foundUser!.startingFollowers
+                        var startingLoops = foundUser!.startingLoops
+                        newFollowersFromPreviousDate = foundUser!.newFollowersFromPreviousDate!
+                        newLoopsFromPreviousDate = foundUser!.newLoopsFromPreviousDate!
                         
                         newFollowers = vineUser.followerCount - startingFollowers
+                        newLoops = vineUser.loopCount - startingLoops
                         
-                        if let savedDate = foundUser["newFollowersData"]!["date"] as? NSDate {
-                            // Saved date is not in today - change startingFollowers
-                            if !calendar.isDateInToday(savedDate) {
-                                startingFollowers = vineUser.followerCount
-                                newFollowersFromPreviousDate = newFollowers
-                            }
+                        if !calendar.isDateInToday(foundUser!.date) {
+                            startingFollowers = vineUser.followerCount
+                            startingLoops = vineUser.loopCount
                         }
                         
                         var now = NSDate()
-                        var user = ["username": vineUser.username, "userId": vineUser.userId, "followerCount": vineUser.followerCount, "loopCount": vineUser.loopCount, "dataPoints":newDataPoints, "newFollowersData": ["date": now, "startingFollowers": startingFollowers, "newFollowersFromPreviousDate": newFollowersFromPreviousDate]]
-                        //                println(user)
-                        sharedDefaults?.setObject(user, forKey: "\(vineUser.userId)")
-                        sharedDefaults?.synchronize()
                         
-                        // cache user
-                        self.saveUserToCache(vineUser.username, avatarPic: vineUser.avatarPic, currentFollowers: vineUser.followerCount, newFollowers: newFollowers, dataPoints: newDataPoints)
+                        let userToSave = SavedUser(username: vineUser.username, userId: vineUser.userId, avatarPic: vineUser.avatarPic, followerCount: vineUser.followerCount, newFollowers: newFollowers, followerDataPoints: followerDataPoints, loopCount: vineUser.loopCount, newLoops: newLoops, loopDataPoints: loopDataPoints, date: now, startingFollowers: startingFollowers, newFollowersFromPreviousDate: newFollowersFromPreviousDate, startingLoops: startingLoops, newLoopsFromPreviousDate: newLoopsFromPreviousDate)
                         
-                        println("Saved user")
-//                        println(user)
+                        UserDefaultsManager.saveUser(userToSave, key: "\(vineUser.userId)")
+                        UserDefaultsManager.saveUserToCache(userToSave)
+                        println("User Found")
+                        println(userToSave)
                         
-                        // cache data
-//                        if let userToSave = user as? [String: AnyObject] {
-//                            println("caching user")
-//                            self.cachedUser = userToSave
-//                            //                            println(self.cachedUser)
-//                        }
+                        
                     }
                     else {
                         println("User not found -- creating new record")
                         var now = NSDate()
-                        var user = ["username": vineUser.username, "userId": vineUser.userId, "followerCount": vineUser.followerCount, "loopCount": vineUser.loopCount, "dataPoints":[vineUser.followerCount], "newFollowersData": ["date": now, "startingFollowers": vineUser.followerCount, "newFollowersFromPreviousDate": newFollowers]]
-                        sharedDefaults?.setObject(user, forKey: "\(vineUser.userId)")
-                        sharedDefaults?.synchronize()
                         
-                        // cache user
-                        self.saveUserToCache(vineUser.username, avatarPic: vineUser.avatarPic, currentFollowers: vineUser.followerCount, newFollowers: newFollowers, dataPoints: [vineUser.followerCount])
-                        
-                        println("New user")
-//                        println(user)
-                        
-                        // cache data
-//                        if let userToSave = user as? [String: AnyObject] {
-//                            println("caching user")
-//                            self.cachedUser = userToSave
-//                            //                            println(self.cachedUser)
-//                        }
+                        var newUser = SavedUser(username: vineUser.username, userId: vineUser.userId, avatarPic: vineUser.avatarPic, followerCount: vineUser.followerCount, newFollowers: newFollowersFromPreviousDate, followerDataPoints: [vineUser.followerCount], loopCount: vineUser.loopCount, newLoops: newLoops, loopDataPoints: [vineUser.loopCount], date: now, startingFollowers: vineUser.followerCount, newFollowersFromPreviousDate: newFollowers, startingLoops: vineUser.loopCount, newLoopsFromPreviousDate: newLoops)
+                        UserDefaultsManager.saveUser(newUser, key: "\(vineUser.userId)")
+                        UserDefaultsManager.saveUserToCache(newUser)
                     }
                     
                     // Use separate UI update function here
-                    self.updateLabels(vineUser.followerCount, newFollowers: newFollowers)
+                    if let displaySetting = UserDefaultsManager.getUserDisplaySetting() as String!{
+                        if displaySetting == "followerView" {
+                            self.updateLabels(vineUser.followerCount, newFollowers: newFollowers)
+                        }
+                        else if displaySetting == "loopView" {
+                            self.updateLabels(vineUser.loopCount, newFollowers: newLoops)
+                        }
+                    }
+                    //                    self.updateLabels(vineUser.followerCount, newFollowers: newFollowers)
                     self.updateAvatarPic(vineUser.avatarPic)
                 })
             }
         }
+//        println("Fetching data")
+//        if (searchString != nil) {
+//            if !searchString!.isEmpty {
+//                
+////                showActionPopoverView("loading")
+//                
+//                VineConnection.getUserDataForName(searchString!, completionHandler: { (vineUser:VineUser, error:String) -> () in
+//                    
+//                    if !error.isEmpty {
+//                        println("error: \(error)")
+////                        self.stopSpinningAction()
+////                        self.showActionPopoverView("noUser")
+//                        return
+//                    }
+//                    else {
+////                        self.hideActionPopoverView()
+//                        println("search successful - saving search")
+//                        UserDefaultsManager.updateUserSearchSettings(searchString!)
+//                    }
+//                    
+////                    self.hideUserSearch()
+//                    
+//                    // Update settings
+//                    var foundUser: SavedUser? = nil
+//                    var newFollowers = 0
+//                    var newFollowersFromPreviousDate = 0
+//                    var newLoops = 0
+//                    var newLoopsFromPreviousDate = 0
+//                    
+//                    UserDefaultsManager.getSavedUser("\(vineUser.userId)", completionHandler: { (savedUser) -> () in
+//                        println("saved user: \(savedUser)")
+//                        foundUser = savedUser
+//                    })
+//                    
+//                    if foundUser != nil {
+//                        var followerDataPoints = foundUser!.followerDataPoints
+//                        followerDataPoints?.append(vineUser.followerCount)
+//                        if followerDataPoints?.endIndex > 20 {
+//                            followerDataPoints?.removeAtIndex(0)
+//                        }
+//                        
+//                        var loopDataPoints = foundUser!.loopDataPoints
+//                        loopDataPoints?.append(vineUser.loopCount)
+//                        if loopDataPoints?.endIndex > 20 {
+//                            followerDataPoints?.removeAtIndex(0)
+//                        }
+//                        
+//                        self.updateGraph(followerDataPoints)
+//                        // Update graphs here
+//                        
+//                        let calendar = NSCalendar.currentCalendar()
+//                        
+//                        var startingFollowers = foundUser!.startingFollowers
+//                        var startingLoops = foundUser!.startingLoops
+//                        newFollowersFromPreviousDate = foundUser!.newFollowersFromPreviousDate!
+//                        newLoopsFromPreviousDate = foundUser!.newLoopsFromPreviousDate!
+//                        
+//                        newFollowers = vineUser.followerCount - startingFollowers
+//                        newLoops = vineUser.loopCount - startingLoops
+//                        
+//                        if !calendar.isDateInToday(foundUser!.date) {
+//                            startingFollowers = vineUser.followerCount
+//                            startingLoops = vineUser.loopCount
+//                        }
+//                        
+//                        var now = NSDate()
+//                        
+//                        let userToSave = SavedUser(username: vineUser.username, userId: vineUser.userId, avatarPic: vineUser.avatarPic, followerCount: vineUser.followerCount, newFollowers: newFollowers, followerDataPoints: followerDataPoints, loopCount: vineUser.loopCount, newLoops: newLoops, loopDataPoints: loopDataPoints, date: now, startingFollowers: startingFollowers, newFollowersFromPreviousDate: newFollowersFromPreviousDate, startingLoops: startingLoops, newLoopsFromPreviousDate: newLoopsFromPreviousDate)
+//                        
+//                        UserDefaultsManager.saveUser(userToSave, key: "\(vineUser.userId)")
+//                        UserDefaultsManager.saveUserToCache(userToSave)
+//                        println("User Found")
+//                        println(userToSave)
+//                        
+//                        
+//                    }
+//                    else {
+//                        println("User not found -- creating new record")
+//                        var now = NSDate()
+//                        
+//                        var newUser = SavedUser(username: vineUser.username, userId: vineUser.userId, avatarPic: vineUser.avatarPic, followerCount: vineUser.followerCount, newFollowers: newFollowersFromPreviousDate, followerDataPoints: [vineUser.followerCount], loopCount: vineUser.loopCount, newLoops: newLoops, loopDataPoints: [vineUser.loopCount], date: now, startingFollowers: vineUser.followerCount, newFollowersFromPreviousDate: newFollowers, startingLoops: vineUser.loopCount, newLoopsFromPreviousDate: newLoops)
+//                        UserDefaultsManager.saveUser(newUser, key: "\(vineUser.userId)")
+//                        UserDefaultsManager.saveUserToCache(newUser)
+//                    }
+//                    
+//                    // Use separate UI update function here
+//                    self.updateLabels(vineUser.followerCount, newFollowers: newFollowers)
+//                    self.updateAvatarPic(vineUser.avatarPic)
+//                })
+//            }
+//        }
 
     }
     
@@ -284,14 +417,5 @@ class TodayViewController: UIViewController, NCWidgetProviding, JBLineChartViewD
                 completionHandler: nil)
         }
     }
-    
-    func saveUserToCache(username: String, avatarPic: UIImage, currentFollowers: Int, newFollowers: Int, dataPoints: [Int]) {
-        let sharedDefaults = NSUserDefaults(suiteName: "group.com.Wybro.Vino-VineTracker")
-        let imageData: NSData = UIImageJPEGRepresentation(avatarPic, 1)
-        let user: [String: AnyObject] = ["username": username, "avatarPic": imageData, "currentFollowers": currentFollowers, "newFollowers": newFollowers, "dataPoints": dataPoints]
-        sharedDefaults?.setObject(user, forKey: "cachedUser")
-        sharedDefaults?.synchronize()
-    }
-    
-    
+
 }
