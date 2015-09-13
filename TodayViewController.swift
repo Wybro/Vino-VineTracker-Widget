@@ -242,6 +242,9 @@ class TodayViewController: UIViewController, NCWidgetProviding, JBLineChartViewD
                         if !calendar.isDateInToday(foundUser!.date) {
                             startingFollowers = vineUser.followerCount
                             startingLoops = vineUser.loopCount
+                            
+                            newFollowersFromPreviousDate = newFollowers
+                            newLoopsFromPreviousDate = newLoops
                         }
                         
                         var now = NSDate()
