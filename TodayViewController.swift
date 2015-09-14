@@ -30,18 +30,18 @@ class TodayViewController: UIViewController, NCWidgetProviding, JBLineChartViewD
     @IBOutlet var warningLabel: UILabel!
     @IBOutlet var followersStaticLabel: UILabel!
     @IBOutlet var todayStaticLabel: UILabel!
-        
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view from its nib.
-
+        
         lineChartView.dataSource = self
         lineChartView.delegate = self
         lineChartView.backgroundColor = UIColor.clearColor()
         lineChartView.showsLineSelection = false
         lineChartView.showsVerticalSelection = false
         lineChartView.reloadData()
-
+        
         println("Launched")
         
         self.avatarPicImageView.layer.cornerRadius = self.avatarPicImageView.frame.size.width / 2
@@ -51,7 +51,7 @@ class TodayViewController: UIViewController, NCWidgetProviding, JBLineChartViewD
     }
     
     override func viewDidAppear(animated: Bool) {
-
+        
     }
     
     override func viewWillAppear(animated: Bool) {
@@ -70,11 +70,11 @@ class TodayViewController: UIViewController, NCWidgetProviding, JBLineChartViewD
     
     func widgetPerformUpdateWithCompletionHandler(completionHandler: ((NCUpdateResult) -> Void)!) {
         // Perform any setup necessary in order to update the view.
-
+        
         // If an error is encountered, use NCUpdateResult.Failed
         // If there's no update required, use NCUpdateResult.NoData
         // If there's an update, use NCUpdateResult.NewData
-
+        
         fetchNewData(UserDefaultsManager.getUserSearchSettings())
         completionHandler(NCUpdateResult.NewData)
     }
@@ -176,23 +176,23 @@ class TodayViewController: UIViewController, NCWidgetProviding, JBLineChartViewD
         if (searchString != nil) {
             if !searchString!.isEmpty {
                 
-//                showActionPopoverView("loading")
+                //                showActionPopoverView("loading")
                 
                 VineConnection.getUserDataForName(searchString!, completionHandler: { (vineUser:VineUser, error:String) -> () in
                     
                     if !error.isEmpty {
                         println("error: \(error)")
-//                        self.stopSpinningAction()
-//                        self.showActionPopoverView("noUser")
+                        //                        self.stopSpinningAction()
+                        //                        self.showActionPopoverView("noUser")
                         return
                     }
                     else {
-//                        self.hideActionPopoverView()
+                        //                        self.hideActionPopoverView()
                         println("search successful - saving search")
                         UserDefaultsManager.updateUserSearchSettings(searchString!)
                     }
                     
-//                    self.hideUserSearch()
+                    //                    self.hideUserSearch()
                     
                     // Update settings
                     var foundUser: SavedUser? = nil
@@ -227,8 +227,6 @@ class TodayViewController: UIViewController, NCWidgetProviding, JBLineChartViewD
                                 self.updateGraph(loopDataPoints)
                             }
                         }
-                        //                        self.updateGraph(followerDataPoints)
-                        // Update graphs here
                         
                         let calendar = NSCalendar.currentCalendar()
                         
@@ -237,15 +235,25 @@ class TodayViewController: UIViewController, NCWidgetProviding, JBLineChartViewD
                         newFollowersFromPreviousDate = foundUser!.newFollowersFromPreviousDate!
                         newLoopsFromPreviousDate = foundUser!.newLoopsFromPreviousDate!
                         
-//                        newFollowers = vineUser.followerCount - startingFollowers
-//                        newLoops = vineUser.loopCount - startingLoops
-                        
                         if !calendar.isDateInToday(foundUser!.date) {
+                            
+                            // Data is one day old
+                            if calendar.isDateInYesterday(foundUser!.date) {
+                                // Update newLoops/Follower data
+                                newFollowersFromPreviousDate = vineUser.followerCount - startingFollowers
+                                newLoopsFromPreviousDate = vineUser.loopCount - startingLoops
+                            }
+                                // Data is older than one day
+                            else {
+                                // Reset values to 0
+                                newFollowersFromPreviousDate = 0
+                                newLoopsFromPreviousDate = 0
+                            }
+                            
+                            // Reset starting values
                             startingFollowers = vineUser.followerCount
                             startingLoops = vineUser.loopCount
                             
-                            newFollowersFromPreviousDate = newFollowers
-                            newLoopsFromPreviousDate = newLoops
                         }
                         
                         newFollowers = vineUser.followerCount - startingFollowers
@@ -332,5 +340,5 @@ class TodayViewController: UIViewController, NCWidgetProviding, JBLineChartViewD
                 completionHandler: nil)
         }
     }
-
+    
 }
