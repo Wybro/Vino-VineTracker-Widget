@@ -42,7 +42,7 @@ class TodayViewController: UIViewController, NCWidgetProviding, JBLineChartViewD
         lineChartView.showsVerticalSelection = false
         lineChartView.reloadData()
         
-        println("Launched")
+        print("Launched")
         
         self.avatarPicImageView.layer.cornerRadius = self.avatarPicImageView.frame.size.width / 2
         self.avatarPicImageView.clipsToBounds = true
@@ -68,7 +68,7 @@ class TodayViewController: UIViewController, NCWidgetProviding, JBLineChartViewD
         // Dispose of any resources that can be recreated.
     }
     
-    func widgetPerformUpdateWithCompletionHandler(completionHandler: ((NCUpdateResult) -> Void)!) {
+    func widgetPerformUpdateWithCompletionHandler(completionHandler: ((NCUpdateResult) -> Void)) {
         // Perform any setup necessary in order to update the view.
         
         // If an error is encountered, use NCUpdateResult.Failed
@@ -113,7 +113,7 @@ class TodayViewController: UIViewController, NCWidgetProviding, JBLineChartViewD
     }
     
     func checkUserSearchSettings() {
-        if let searchSetting = UserDefaultsManager.getUserSearchSettings() as String! {
+        if let _ = UserDefaultsManager.getUserSearchSettings() as String! {
             warningLabel.hidden = true
             followerLabel.hidden = false
             followersStaticLabel.hidden = false
@@ -142,7 +142,7 @@ class TodayViewController: UIViewController, NCWidgetProviding, JBLineChartViewD
     }
     
     func followerViewMode() {
-        println("followerViewMode")
+        print("followerViewMode")
         UserDefaultsManager.updateUserDisplaySetting("followerView")
         dispatch_async(dispatch_get_main_queue(), { () -> Void in
             self.followersStaticLabel.text = "followers"
@@ -157,7 +157,7 @@ class TodayViewController: UIViewController, NCWidgetProviding, JBLineChartViewD
     }
     
     func loopViewMode() {
-        println("loopViewMode")
+        print("loopViewMode")
         UserDefaultsManager.updateUserDisplaySetting("loopView")
         dispatch_async(dispatch_get_main_queue(), { () -> Void in
             self.followersStaticLabel.text = "loops"
@@ -172,7 +172,7 @@ class TodayViewController: UIViewController, NCWidgetProviding, JBLineChartViewD
     }
     
     func fetchNewData(searchString: String?) {
-        println("Fetching data")
+        print("Fetching data")
         if (searchString != nil) {
             if !searchString!.isEmpty {
                 
@@ -181,14 +181,14 @@ class TodayViewController: UIViewController, NCWidgetProviding, JBLineChartViewD
                 VineConnection.getUserDataForName(searchString!, completionHandler: { (vineUser:VineUser, error:String) -> () in
                     
                     if !error.isEmpty {
-                        println("error: \(error)")
+                        print("error: \(error)")
                         //                        self.stopSpinningAction()
                         //                        self.showActionPopoverView("noUser")
                         return
                     }
                     else {
                         //                        self.hideActionPopoverView()
-                        println("search successful - saving search")
+                        print("search successful - saving search")
                         UserDefaultsManager.updateUserSearchSettings(searchString!)
                     }
                     
@@ -202,7 +202,7 @@ class TodayViewController: UIViewController, NCWidgetProviding, JBLineChartViewD
                     var newLoopsFromPreviousDate = 0
                     
                     UserDefaultsManager.getSavedUser("\(vineUser.userId)", completionHandler: { (savedUser) -> () in
-                        println("saved user: \(savedUser)")
+                        print("saved user: \(savedUser)")
                         foundUser = savedUser
                     })
                     
@@ -259,22 +259,22 @@ class TodayViewController: UIViewController, NCWidgetProviding, JBLineChartViewD
                         newFollowers = vineUser.followerCount - startingFollowers
                         newLoops = vineUser.loopCount - startingLoops
                         
-                        var now = NSDate()
+                        let now = NSDate()
                         
                         let userToSave = SavedUser(username: vineUser.username, userId: vineUser.userId, avatarPic: vineUser.avatarPic, followerCount: vineUser.followerCount, newFollowers: newFollowers, followerDataPoints: followerDataPoints, loopCount: vineUser.loopCount, newLoops: newLoops, loopDataPoints: loopDataPoints, date: now, startingFollowers: startingFollowers, newFollowersFromPreviousDate: newFollowersFromPreviousDate, startingLoops: startingLoops, newLoopsFromPreviousDate: newLoopsFromPreviousDate)
                         
                         UserDefaultsManager.saveUser(userToSave, key: "\(vineUser.userId)")
                         UserDefaultsManager.saveUserToCache(userToSave)
-                        println("User Found")
-                        println(userToSave)
+                        print("User Found")
+                        print(userToSave)
                         
                         
                     }
                     else {
-                        println("User not found -- creating new record")
-                        var now = NSDate()
+                        print("User not found -- creating new record")
+                        let now = NSDate()
                         
-                        var newUser = SavedUser(username: vineUser.username, userId: vineUser.userId, avatarPic: vineUser.avatarPic, followerCount: vineUser.followerCount, newFollowers: newFollowersFromPreviousDate, followerDataPoints: [vineUser.followerCount], loopCount: vineUser.loopCount, newLoops: newLoops, loopDataPoints: [vineUser.loopCount], date: now, startingFollowers: vineUser.followerCount, newFollowersFromPreviousDate: newFollowers, startingLoops: vineUser.loopCount, newLoopsFromPreviousDate: newLoops)
+                        let newUser = SavedUser(username: vineUser.username, userId: vineUser.userId, avatarPic: vineUser.avatarPic, followerCount: vineUser.followerCount, newFollowers: newFollowersFromPreviousDate, followerDataPoints: [vineUser.followerCount], loopCount: vineUser.loopCount, newLoops: newLoops, loopDataPoints: [vineUser.loopCount], date: now, startingFollowers: vineUser.followerCount, newFollowersFromPreviousDate: newFollowers, startingLoops: vineUser.loopCount, newLoopsFromPreviousDate: newLoops)
                         UserDefaultsManager.saveUser(newUser, key: "\(vineUser.userId)")
                         UserDefaultsManager.saveUserToCache(newUser)
                     }
@@ -297,8 +297,8 @@ class TodayViewController: UIViewController, NCWidgetProviding, JBLineChartViewD
     
     func updateLabels(followers: Int, newFollowers: Int) {
         dispatch_async(dispatch_get_main_queue(), { () -> Void in
-            var followersFormatted = NSNumberFormatter.localizedStringFromNumber(followers, numberStyle: NSNumberFormatterStyle.DecimalStyle)
-            var newFollowersFormatted = NSNumberFormatter.localizedStringFromNumber(newFollowers, numberStyle: NSNumberFormatterStyle.DecimalStyle)
+            let followersFormatted = NSNumberFormatter.localizedStringFromNumber(followers, numberStyle: NSNumberFormatterStyle.DecimalStyle)
+            let newFollowersFormatted = NSNumberFormatter.localizedStringFromNumber(newFollowers, numberStyle: NSNumberFormatterStyle.DecimalStyle)
             
             self.followerLabel.text = followersFormatted
             
@@ -321,8 +321,8 @@ class TodayViewController: UIViewController, NCWidgetProviding, JBLineChartViewD
     
     func updateGraph(dataPointsArr: [Int]) {
         dataPoints.removeAll(keepCapacity: false)
-        println("Updating graph")
-        println(dataPointsArr)
+        print("Updating graph")
+        print(dataPointsArr)
         for entry in dataPointsArr {
             dataPoints.append(Int(entry as NSNumber))
         }
